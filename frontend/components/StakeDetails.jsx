@@ -70,6 +70,8 @@ export default function StakeDetails() {
             await getEarnedBalance({ onError: (error) => console.log(error) })
         ).toString()
 
+            console.log(`Earned: ${earnedBalanceFromContract}`)
+
         const formattedEarnedBalanceFromContract = ethers.utils.formatUnits(
             earnedBalanceFromContract,
             "ether"

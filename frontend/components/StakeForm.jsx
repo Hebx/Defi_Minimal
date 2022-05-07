@@ -5,7 +5,7 @@
 import {useWeb3Contract} from "react-moralis"
 import { rewardTokenAbi, rewardTokenAddress, stakingAbi, stakingAddress } from "../constants"
 import {Form} from "web3uikit"
-import { ethers } from "hardhat"
+import { ethers } from "ethers"
 
 
 export default function StakeForm() {
@@ -29,26 +29,45 @@ export default function StakeForm() {
 		}
 		console.log("approving...")
 		const tx = await runContractFunction({
+			params: approveOptions,
 			onError: (error) => console.log(error),
+			onSuccess: () => {
+				handleApproveSuccess(approveOptions.params.amount)
+			}
 		})
 	}
 
+	async function handleApproveSuccess(amountToStakeFormatted) {
+		stakeOptions.params = {
+			amount: amountToStakeFormatted
+		}
+		console.log(`Staking ${stakeOptions.params.amount} RT Token...`);
+		const tx = await runContractFunction({
+			params: stakeOptions,
+			onError: (error) => console.log(error),
+		})
+		await tx.wait(1)
+		console.log("Transaction has been confirmed by 1 block")
+	}
+
 	return (
+		<div>
 		<Form
 		onSubmit={handleStakeSubmit}
-			data={
-				[
-					{
+		data={
+			[
+				{
 
-						inputWidth: "50%",
-						name:"Amount to Stake (in ETH)",
-						type: "number",
-						value: "",
-						key: "amountToStake"
-					},
-				]
-			}
-			title="Let's Stake!"
+					inputWidth: "50%",
+					name:"Amount to Stake (in RT)",
+					type: "number",
+					value: "",
+					key: "amountToStake"
+				},
+			]
+		}
+		title="Let's Stake!"
 		></Form>
+		</div>
 	)
 }
