@@ -6,7 +6,6 @@ const {
 } = require("../helper-hardhat-config")
 const { verify } = require("../helper-functions")
 
-
 module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deploy, log } = deployments
     const { deployer } = await getNamedAccounts()
@@ -30,7 +29,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     log("----------------------------------------------------")
 
     //Deploy options contract
-    const args = [priceFeed,dai]
+    const args = [priceFeed, dai]
     const optionsDeployment = await deploy("Options", {
         from: deployer,
         args: args,
@@ -38,14 +37,12 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         waitConfirmations: waitBlockConfirmations,
     })
 
-    // Verify deployment    
+    // Verify deployment
     if (!developmentChains.includes(network.name) && process.env.ETHERSCAN_API_KEY) {
         log("Verifying...")
         await verify(optionsDeployment.address, args)
     }
     log("----------------------------------------------------")
-
 }
 
 module.exports.tags = ["all", "options"]
-

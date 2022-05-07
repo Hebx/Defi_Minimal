@@ -25,7 +25,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /// 2. Cash-secured Puts - You earn yield on ETH (Bullish).
 
 contract Options is ReentrancyGuard, Ownable {
-
     ///STORAGE///
 
     AggregatorV3Interface internal daiEthPriceFeed;
@@ -72,14 +71,31 @@ contract Options is ReentrancyGuard, Ownable {
 
     ///EVENTS///
 
-    event CallOptionOpen(uint256 id, address writer, uint256 amount, uint256 strike, uint256 premium, uint256 expiration, uint256 value);
-    event PutOptionOpen(uint256 id, address writer, uint256 amount, uint256 strike, uint256 premium, uint256 expiration, uint256 value);
+    event CallOptionOpen(
+        uint256 id,
+        address writer,
+        uint256 amount,
+        uint256 strike,
+        uint256 premium,
+        uint256 expiration,
+        uint256 value
+    );
+    event PutOptionOpen(
+        uint256 id,
+        address writer,
+        uint256 amount,
+        uint256 strike,
+        uint256 premium,
+        uint256 expiration,
+        uint256 value
+    );
     event CallOptionBought(address buyer, uint256 id);
     event PutOptionBought(address buyer, uint256 id);
     event CallOptionExercised(address buyer, uint256 id);
     event PutOptionExercised(address buyer, uint256 id);
     event OptionExpiresWorthless(address buyer, uint256 Id);
     event FundsRetrieved(address writer, uint256 id, uint256 value);
+
     //event AllowedTokenSet(address token, uint256 price);
 
     ///@dev CHAINLINK PRICEFEEDS & DAI ADDRESSES
@@ -107,17 +123,16 @@ contract Options is ReentrancyGuard, Ownable {
         uint256 _daysToExpiry,
         uint256 _daiAmount
     ) external payable moreThanZero(_amount, _strike, _premiumDue) {
-
         //returns x amt of ether for 1 dai...1DAI/xETH
         uint256 marketPriceEthPerOneDai = _amount * getPriceFeed(_daiAmount);
         //returns x amt of dai per 1 eth...1ETH/xDAI
-        uint256 marketPriceDaiPerOneEth = _daiAmount /  marketPriceEthPerOneDai;
+        uint256 marketPriceDaiPerOneEth = _daiAmount / marketPriceEthPerOneDai;
 
         //eth sent to contract for collateral MUST equal current spot price (1DAI/xETH)
         require(msg.value == marketPriceEthPerOneDai, "CALL: ETH VALUE MUST EQUAL SPOT PRICE");
         //So, In this contract the strike == the spot price for simplicity.
         require(marketPriceDaiPerOneEth == _strike, "CALL: WRONG ETH COLLATERAL");
-        
+
         s_optionIdToOption[s_optionCounter] = Option(
             payable(msg.sender),
             address(0),
@@ -133,7 +148,15 @@ contract Options is ReentrancyGuard, Ownable {
         s_tradersPosition[msg.sender].push(s_optionCounter);
         s_optionId = s_optionCounter++;
 
-        emit CallOptionOpen(s_optionId, msg.sender, _amount, _strike, _premiumDue, block.timestamp + _daysToExpiry, msg.value);
+        emit CallOptionOpen(
+            s_optionId,
+            msg.sender,
+            _amount,
+            _strike,
+            _premiumDue,
+            block.timestamp + _daysToExpiry,
+            msg.value
+        );
     }
 
     ///@dev Buy an open call option.
@@ -176,11 +199,10 @@ contract Options is ReentrancyGuard, Ownable {
         uint256 _daysToExpiry,
         uint256 _daiAmount
     ) external payable moreThanZero(_amount, _strike, _premiumDue) {
-
         //returns x amt of ether for 1 dai...1DAI/ETH
         uint256 marketPriceEthPerOneDai = _amount * getPriceFeed(_daiAmount);
         //returns x amt of dai per 1 eth...1ETH/DAI
-        uint256 marketPriceDaiPerOneEth = _daiAmount /  marketPriceEthPerOneDai;
+        uint256 marketPriceDaiPerOneEth = _daiAmount / marketPriceEthPerOneDai;
 
         //Eth sent to contract for collateral MUST equal the value of ETH vs DAI.
         require(msg.value == marketPriceEthPerOneDai, "PUT: ETH VALUE MUST EQUAL DAI");
@@ -202,7 +224,15 @@ contract Options is ReentrancyGuard, Ownable {
         s_tradersPosition[msg.sender].push(s_optionCounter);
         s_optionId = s_optionCounter++;
 
-        emit PutOptionOpen(s_optionId, msg.sender, _amount, _strike, _premiumDue, block.timestamp + _daysToExpiry, msg.value);
+        emit PutOptionOpen(
+            s_optionId,
+            msg.sender,
+            _amount,
+            _strike,
+            _premiumDue,
+            block.timestamp + _daysToExpiry,
+            msg.value
+        );
     }
 
     ///@dev Buy an open put option.
@@ -249,9 +279,9 @@ contract Options is ReentrancyGuard, Ownable {
 
         //returns # of dai for 1 ETH. Ex: 1 dai = ~0.0002eth in real life right now
         uint256 marketPriceEthPerOneDai = option.amount * getPriceFeed(_daiAmount);
-        
+
         //returns 1 eth = x amt of dai...
-        uint256 marketPriceDaiPerOneEth = _daiAmount /  marketPriceEthPerOneDai;
+        uint256 marketPriceDaiPerOneEth = _daiAmount / marketPriceEthPerOneDai;
 
         //If spot < strike, option is worthless
         require(marketPriceDaiPerOneEth > option.strike, "NOT GREATER THAN STRIKE");
@@ -263,12 +293,12 @@ contract Options is ReentrancyGuard, Ownable {
         //transfer to msg.sender the writer's ETH collateral
         require(address(this).balance >= option.collateral, "NOT ENOUGH ETH BALANCE");
         (paid, ) = payable(msg.sender).call{value: option.collateral}("");
-        if(!paid) revert TransferFailed();
+        if (!paid) revert TransferFailed();
 
         //transfer dai to option writer
         paid = dai.transfer(option.writer, option.strike);
         if (!paid) revert TransferFailed();
-     
+
         s_optionIdToOption[_optionId].optionState = OptionState.Exercised;
 
         emit CallOptionExercised(msg.sender, _optionId);
@@ -293,8 +323,8 @@ contract Options is ReentrancyGuard, Ownable {
         uint256 marketPriceEthPerOneDai = option.amount * getPriceFeed(_daiAmount);
 
         //returns 1 eth = x amt of dai...
-        uint256 marketPriceDaiPerOneEth = _daiAmount /  marketPriceEthPerOneDai;
-        
+        uint256 marketPriceDaiPerOneEth = _daiAmount / marketPriceEthPerOneDai;
+
         //if spot > strike, option is worthless
         require(marketPriceDaiPerOneEth < option.strike, "MUST BE LESS THAN STRIKE");
 
@@ -302,13 +332,13 @@ contract Options is ReentrancyGuard, Ownable {
         bool paid = dai.transferFrom(msg.sender, address(this), option.strike);
         if (!paid) revert TransferFailed();
 
-        (paid,) = payable(msg.sender).call{value: option.collateral}("");
-        if(!paid) revert TransferFailed();
+        (paid, ) = payable(msg.sender).call{value: option.collateral}("");
+        if (!paid) revert TransferFailed();
 
         //transfer dai to option writer
         paid = dai.transfer(option.writer, option.strike);
         if (!paid) revert TransferFailed();
-     
+
         s_optionIdToOption[_optionId].optionState = OptionState.Exercised;
 
         emit PutOptionExercised(msg.sender, _optionId);
@@ -317,8 +347,10 @@ contract Options is ReentrancyGuard, Ownable {
     ///@dev The writer can cancel options that have expired and are worthless
     ///@param _optionId would need to be used to access the correct option. Every buyer must have a seller.
     ///@param _daiAmount is the amount of dai
-    function optionExpiresWorthless(uint256 _optionId, uint256 _daiAmount) external optionExists(_optionId) {
-
+    function optionExpiresWorthless(uint256 _optionId, uint256 _daiAmount)
+        external
+        optionExists(_optionId)
+    {
         Option memory option = s_optionIdToOption[_optionId];
 
         require(s_optionIdToOption[_optionId].writer == msg.sender, "NOT WRITER");
@@ -327,16 +359,13 @@ contract Options is ReentrancyGuard, Ownable {
 
         uint256 marketPriceEthPerOneDai = option.amount * getPriceFeed(_daiAmount);
 
-        uint256 marketPriceDaiPerOneEth = _daiAmount /  marketPriceEthPerOneDai;
+        uint256 marketPriceDaiPerOneEth = _daiAmount / marketPriceEthPerOneDai;
 
         if (option.optionType == OptionType.Call) {
-
             //For call, if spot < strike, call options expire worthless
             require(marketPriceDaiPerOneEth < option.strike, "PRICE NOT LESS THAN STRIKE");
             s_optionIdToOption[_optionId].optionState = OptionState.Cancelled;
-
         } else {
-
             //For put, if spot > strike, put options expire worthless
             require(marketPriceDaiPerOneEth > option.strike, "PRICE NOT GREATER THAN STRIKE");
             s_optionIdToOption[_optionId].optionState = OptionState.Cancelled;
@@ -349,7 +378,7 @@ contract Options is ReentrancyGuard, Ownable {
     ///@param _optionId would need to be used to access the correct option. Every buyer must have a seller.
     function retrieveExpiredFunds(uint256 _optionId) external nonReentrant {
         Option memory option = s_optionIdToOption[_optionId];
-        
+
         require(option.optionState == OptionState.Cancelled, "NOT CANCELED");
         require(option.expiration < block.timestamp, "NOT EXPIRED");
         require(msg.sender == option.writer, "NOT WRITER");
@@ -358,8 +387,8 @@ contract Options is ReentrancyGuard, Ownable {
         require(address(this).balance >= option.collateral, "NOT ENOUGH ETH");
 
         //return ETH collateral to writer if options expired worthless(cancelled)
-        (bool paid,) = payable(msg.sender).call{value: option.collateral}("");
-        if(!paid) revert TransferFailed();
+        (bool paid, ) = payable(msg.sender).call{value: option.collateral}("");
+        if (!paid) revert TransferFailed();
 
         emit FundsRetrieved(msg.sender, _optionId, option.collateral);
     }
